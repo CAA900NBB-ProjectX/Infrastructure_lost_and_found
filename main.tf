@@ -3,35 +3,35 @@ provider "azurerm" {
 }
 
 resource "azurerm_resource_group" "rg" {
-  name     = var.resource_group_name
+  name     = var.FoundIt_rg
   location = var.location
 }
 
 resource "azurerm_virtual_network" "vnet" {
   name                = var.vnet_name
   location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  FoundIt_rg = azurerm_resource_group.rg.name
   address_space       = ["10.0.0.0/16"]
 }
 
 resource "azurerm_subnet" "public_subnet" {
   name                 = "public-subnet"
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
+  FoundIt_rg  = azurerm_resource_group.rg.name
+  FountIt_vnet = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.1.0/24"]
 }
 
 resource "azurerm_subnet" "private_subnet" {
   name                 = "private-subnet"
-  resource_group_name  = azurerm_resource_group.rg.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
+  FoundIt_rg  = azurerm_resource_group.rg.name
+  FountIt_vnet = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.2.0/24"]
 }
 
 resource "azurerm_network_interface" "nic" {
   name                = "vm-nic"
   location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  FoundIt_rg = azurerm_resource_group.rg.name
 
   ip_configuration {
     name                          = "internal"
@@ -44,13 +44,13 @@ resource "azurerm_network_interface" "nic" {
 resource "azurerm_public_ip" "vm_public_ip" {
   name                = "vm-public-ip"
   location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  FoundIt_rg = azurerm_resource_group.rg.name
   allocation_method   = "Dynamic"
 }
 
 resource "azurerm_linux_virtual_machine" "vm" {
   name                = "vm"
-  resource_group_name = azurerm_resource_group.rg.name
+  FoundIt_rg = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   size                = "Standard_B1s"
   admin_username      = "adminuser"
@@ -95,7 +95,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
 resource "azurerm_container_app_environment" "container_env" {
   name                = "container-env"
   location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  FoundIt_rg = azurerm_resource_group.rg.name
 
   infrastructure_subnet_id = azurerm_subnet.private_subnet.id
 }
@@ -103,7 +103,7 @@ resource "azurerm_container_app_environment" "container_env" {
 resource "azurerm_container_app" "container_app" {
   name                         = "my-container-app"
   container_app_environment_id = azurerm_container_app_environment.container_env.id
-  resource_group_name          = azurerm_resource_group.rg.name
+  FoundIt_rg          = azurerm_resource_group.rg.name
   revision_mode                = "Single"
 
   template {
