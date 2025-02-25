@@ -14,6 +14,21 @@ variable "vnet_name" {
   type        = string
 }
 
+variable "public_subnet_name" {
+  description = "The name of the public subnet"
+  type        = string
+}
+
+variable "private_subnet_name" {
+  description = "The name of the private subnet"
+  type        = string
+}
+
+variable "vm_public_ip_name" {
+  description = "The name of the public IP for the virtual machine"
+  type        = string
+}
+
 variable "ssh_public_key" {
   description = "Path to the SSH public key"
   type        = string

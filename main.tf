@@ -2,36 +2,48 @@ provider "azurerm" {
   features {}
 }
 
+# Resource Group
 resource "azurerm_resource_group" "rg" {
   name     = var.FoundIt_rg
   location = var.location
 }
 
+# Virtual Network
 resource "azurerm_virtual_network" "vnet" {
   name                = var.vnet_name
   location            = azurerm_resource_group.rg.location
-  FoundIt_rg = azurerm_resource_group.rg.name
+  resource_group_name = azurerm_resource_group.rg.name
   address_space       = ["10.0.0.0/16"]
 }
 
+# Subnets
 resource "azurerm_subnet" "public_subnet" {
   name                 = "public-subnet"
-  FoundIt_rg  = azurerm_resource_group.rg.name
-  FountIt_vnet = azurerm_virtual_network.vnet.name
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.1.0/24"]
 }
 
 resource "azurerm_subnet" "private_subnet" {
   name                 = "private-subnet"
-  FoundIt_rg  = azurerm_resource_group.rg.name
-  FountIt_vnet = azurerm_virtual_network.vnet.name
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.2.0/24"]
 }
 
-resource "azurerm_network_interface" "nic" {
+# Public IP for VM
+resource "azurerm_public_ip" "vm_public_ip" {
+  name                = "vm-public-ip"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  allocation_method   = "Dynamic"
+}
+
+# Network Interface for VM
+resource "azurerm_network_interface" "vm_nic" {
   name                = "vm-nic"
   location            = azurerm_resource_group.rg.location
-  FoundIt_rg = azurerm_resource_group.rg.name
+  resource_group_name = azurerm_resource_group.rg.name
 
   ip_configuration {
     name                          = "internal"
@@ -41,27 +53,14 @@ resource "azurerm_network_interface" "nic" {
   }
 }
 
-resource "azurerm_public_ip" "vm_public_ip" {
-  name                = "vm-public-ip"
-  location            = azurerm_resource_group.rg.location
-  FoundIt_rg = azurerm_resource_group.rg.name
-  allocation_method   = "Dynamic"
-}
-
+# Virtual Machine
 resource "azurerm_linux_virtual_machine" "vm" {
-  name                = "vm"
-  FoundIt_rg = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-  size                = "Standard_B1s"
-  admin_username      = "adminuser"
-  network_interface_ids = [
-    azurerm_network_interface.nic.id,
-  ]
-
-  admin_ssh_key {
-    username   = "adminuser"
-    public_key = file(var.ssh_public_key)
-  }
+  name                  = "app-vm"
+  resource_group_name   = azurerm_resource_group.rg.name
+  location              = azurerm_resource_group.rg.location
+  size                  = "Standard_B1s"
+  admin_username        = "adminuser"
+  network_interface_ids = [azurerm_network_interface.vm_nic.id]
 
   os_disk {
     caching              = "ReadWrite"
@@ -75,43 +74,52 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = "latest"
   }
 
-  provisioner "remote-exec" {
-    connection {
-      type        = "ssh"
-      user        = "adminuser"
-      private_key = file(var.ssh_private_key)
-      host        = azurerm_public_ip.vm_public_ip.ip_address
-    }
-
-    inline = [
-      "sudo apt update -y",
-      "sudo apt install -y docker.io",
-      "sudo systemctl enable docker",
-      "sudo systemctl start docker"
-    ]
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = file("~/.ssh/id_rsa.pub")
   }
 }
 
-resource "azurerm_container_app_environment" "container_env" {
-  name                = "container-env"
+# Azure Container Registry (ACR)
+resource "azurerm_container_registry" "acr" {
+  name                = "founditacr"
+  resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  FoundIt_rg = azurerm_resource_group.rg.name
-
-  infrastructure_subnet_id = azurerm_subnet.private_subnet.id
+  sku                 = "Basic"
+  admin_enabled       = true
 }
 
-resource "azurerm_container_app" "container_app" {
-  name                         = "my-container-app"
-  container_app_environment_id = azurerm_container_app_environment.container_env.id
-  FoundIt_rg          = azurerm_resource_group.rg.name
-  revision_mode                = "Single"
+# Azure Container Instance (ACI) for Microservices
+resource "azurerm_container_group" "aci" {
+  name                = "foundit-microservices"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  os_type             = "Linux"
 
-  template {
-    container {
-      name   = "nginx-container"
-      image  = "nginx"
-      cpu    = 0.5
-      memory = "1Gi"
+  container {
+    name   = "LoginService"
+    image  = "${azurerm_container_registry.acr.login_server}/LoginService:latest"
+    cpu    = "0.5"
+    memory = "1.5"
+    ports {
+      port     = 5001
+      protocol = "TCP"
     }
+  }
+
+  container {
+    name   = "ItemService"
+    image  = "${azurerm_container_registry.acr.login_server}/ItemService:latest"
+    cpu    = "0.5"
+    memory = "1.5"
+    ports {
+      port     = 5002
+      protocol = "TCP"
+    }
+  }
+
+  image_registry_credential {
+    username = azurerm_container_registry.acr.admin_username
+    password = azurerm_container_registry.acr.admin_password
   }
 }
