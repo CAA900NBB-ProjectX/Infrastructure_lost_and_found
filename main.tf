@@ -118,8 +118,9 @@ resource "azurerm_container_group" "aci" {
     }
   }
 
-  image_registry_credential {
-    username = azurerm_container_registry.acr.admin_username
-    password = azurerm_container_registry.acr.admin_password
-  }
+ image_registry_credential {
+  server   = azurerm_container_registry.acr.login_server
+  username = azurerm_container_registry.acr.admin_username
+  password = azurerm_container_registry.acr.admin_password
+}
 }
