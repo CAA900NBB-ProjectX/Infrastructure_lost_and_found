@@ -4,13 +4,13 @@ provider "azurerm" {
 
 # Resource Group
 resource "azurerm_resource_group" "rg" {
-  name     = var.FoundIt_rg
+  name     = "FoundIt_rg"
   location = var.location
 }
 
 # Virtual Network
 resource "azurerm_virtual_network" "vnet" {
-  name                = var.vnet_name
+  name                = "vnet"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   address_space       = ["10.0.0.0/16"]
@@ -55,7 +55,7 @@ resource "azurerm_network_interface" "vm_nic" {
 
 # Virtual Machine
 resource "azurerm_linux_virtual_machine" "vm" {
-  name                  = "app-vm"
+  name                  = "FoundIt-vm"
   resource_group_name   = azurerm_resource_group.rg.name
   location              = azurerm_resource_group.rg.location
   size                  = "Standard_B1s"
@@ -87,40 +87,4 @@ resource "azurerm_container_registry" "acr" {
   location            = azurerm_resource_group.rg.location
   sku                 = "Basic"
   admin_enabled       = true
-}
-
-# Azure Container Instance (ACI) for Microservices
-resource "azurerm_container_group" "aci" {
-  name                = "foundit-microservices"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
-  os_type             = "Linux"
-
-  container {
-    name   = "LoginService"
-    image  = "${azurerm_container_registry.acr.login_server}/LoginService:latest"
-    cpu    = "0.5"
-    memory = "1.5"
-    ports {
-      port     = 5001
-      protocol = "TCP"
-    }
-  }
-
-  container {
-    name   = "ItemService"
-    image  = "${azurerm_container_registry.acr.login_server}/ItemService:latest"
-    cpu    = "0.5"
-    memory = "1.5"
-    ports {
-      port     = 5002
-      protocol = "TCP"
-    }
-  }
-
- image_registry_credential {
-  server   = azurerm_container_registry.acr.login_server
-  username = azurerm_container_registry.acr.admin_username
-  password = azurerm_container_registry.acr.admin_password
-}
 }
