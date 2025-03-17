@@ -120,8 +120,14 @@ resource "azurerm_network_interface" "vm_nic" {
   }
 }
 
+# Associate NSG with Network Interface
+resource "azurerm_network_interface_security_group_association" "nsg_association" {
+  network_interface_id      = azurerm_network_interface.vm_nic.id
+  network_security_group_id = azurerm_network_security_group.nsg.id
+}
+
 # Virtual Machine
-resource "azurerm_linux_virtual_machine" "vm" {
+resource "azurerm_linux_virtual_machine" "vm" { 
   name                  = "FoundIt-vm"
   resource_group_name   = azurerm_resource_group.rg.name
   location              = azurerm_resource_group.rg.location
@@ -129,22 +135,24 @@ resource "azurerm_linux_virtual_machine" "vm" {
   admin_username        = "adminuser"
   network_interface_ids = [azurerm_network_interface.vm_nic.id]
 
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = file("~/.ssh/id_rsa.pub")
+  }
+
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
   }
 
-  source_image_reference {
+    source_image_reference {
     publisher = "Canonical"
     offer     = "UbuntuServer"
-    sku       = "18.04-LTS"
-    version   = "latest"
+    sku       = "18_04-lts-gen2"
+    version   = "18.04.202306070"
   }
 
-  admin_ssh_key {
-    username   = "adminuser"
-    public_key = file("~/.ssh/id_rsa.pub")
-  }
+
 }
 
 # Azure Container Registry (ACR)
