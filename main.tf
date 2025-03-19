@@ -152,7 +152,8 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = "18.04.202306070"
   }
 
-
+  # Pass the User Data script to the VM
+  custom_data = base64encode(file("${path.root}/userdata.sh"))
 }
 
 # Azure Container Registry (ACR)
