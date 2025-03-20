@@ -8,6 +8,14 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
 }
 
+# Public IP for VM
+resource "azurerm_public_ip" "public_ip" {
+  name                = "vm-public-ip"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  allocation_method   = "Static"
+}
+
 # Virtual Network
 resource "azurerm_virtual_network" "vnet" {
   name                = "vnet"
@@ -29,14 +37,6 @@ resource "azurerm_subnet" "private_subnet" {
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.2.0/24"]
-}
-
-# Public IP for VM
-resource "azurerm_public_ip" "vm_public_ip" {
-  name                = "vm-public-ip"
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-  allocation_method   = "Dynamic"
 }
 
 # Network Security Group
@@ -116,7 +116,7 @@ resource "azurerm_network_interface" "vm_nic" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.public_subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.vm_public_ip.id
+    public_ip_address_id          = azurerm_public_ip.public_ip.id  
   }
 }
 
@@ -154,6 +154,47 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   # Pass the User Data script to the VM
   custom_data = base64encode(file("${path.root}/userdata.sh"))
+}
+
+# Upload `bash.sh` and environment files, then execute them
+resource "null_resource" "deploy" {
+  depends_on = [azurerm_linux_virtual_machine.vm]
+
+  connection {
+    type        = "ssh"
+    user        = "azureuser"
+    private_key = file("~/.ssh/id_rsa")  # Replace with your SSH key file
+    host        = azurerm_public_ip.public_ip.ip_address
+  }
+
+  # Upload bash.sh script
+  provisioner "file" {
+    source      = "bash.sh"
+    destination = "/home/azureuser/bash.sh"
+  }
+
+  # Upload environment files
+  provisioner "file" {
+    source      = "loginservice.env"
+    destination = "/home/azureuser/loginservice.env"
+  }
+
+  provisioner "file" {
+    source      = "itemservice.env"
+    destination = "/home/azureuser/itemservice.env"
+  }
+
+  # Execute bash.sh to clone repositories & deploy environment files
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /home/azureuser/bash.sh",
+      "/home/azureuser/bash.sh"
+    ]
+  }
+}
+
+output "public_ip" {
+  value = azurerm_public_ip.public_ip.ip_address
 }
 
 # Azure Container Registry (ACR)
