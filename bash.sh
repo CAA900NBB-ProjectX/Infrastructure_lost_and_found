@@ -1,6 +1,11 @@
 #!/bin/bash
+set -euxo pipefail
 
-# Define repositories and their corresponding directories
+# Navigate to workspace
+cd /home/adminuser || cd /root
+mkdir -p deployment && cd deployment
+
+# Define repositories
 declare -A repos
 repos["itemservice_found_it_backend"]="https://github.com/CAA900NBB-ProjectX/itemservice_found_it_backend.git"
 repos["api_gateway"]="https://github.com/CAA900NBB-ProjectX/api_gateway.git"
@@ -10,24 +15,21 @@ repos["loginservice_found_it_backend"]="https://github.com/CAA900NBB-ProjectX/lo
 # Clone repositories
 for dir in "${!repos[@]}"; do
     if [ -d "$dir" ]; then
-        echo "Directory $dir already exists. Skipping clone."
+        echo "Directory $dir exists. Pulling latest changes..."
+        cd "$dir"
+        git pull origin main || echo "Failed to pull latest changes"
+        cd ..
     else
         echo "Cloning ${repos[$dir]} into $dir..."
         git clone "${repos[$dir]}"
     fi
 done
 
-echo "All repositories have been cloned successfully."
-
 # Deploy environment files
 echo "Deploying environment files..."
-cp loginservice.env loginservice_found_it_backend/.env
-cp itemservice.env itemservice_found_it_backend/.env
-cp chatservice.env chatservice_lost_and_found_backend/.env
+touch loginservice_found_it_backend/.env itemservice_found_it_backend/.env  # Placeholder if .env doesn't exist
 
-echo "Environment files have been deployed successfully."
+echo "DATABASE_URL=mysql://user:password@localhost:3306/db" > loginservice_found_it_backend/.env
+echo "DATABASE_URL=mysql://user:password@localhost:3306/db" > itemservice_found_it_backend/.env
 
-cd api_gateway
-docker-compose up -d
-
-echo "Service Registry is now running on port 8761."
+echo "Environment files deployed successfully."

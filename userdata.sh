@@ -54,10 +54,11 @@ docker-compose --version || echo "Docker Compose installation failed!"
 sudo systemctl enable docker
 sudo systemctl restart docker
 
-# Clone and execute bash.sh
-cd /home/ubuntu
-curl -O https://raw.githubusercontent.com/YOUR_GITHUB_REPO/main/bash.sh  # Replace with your repo link
+# Download and execute `bash.sh`
+cd /home/adminuser || cd /root
+curl -O https://raw.githubusercontent.com/CAA900NBB-ProjectX/deployment-scripts/main/bash.sh
 chmod +x bash.sh
-./bash.sh
+sudo -u adminuser ./bash.sh
+
 
 echo "Deployment script executed successfully."
