@@ -54,11 +54,36 @@ docker-compose --version || echo "Docker Compose installation failed!"
 sudo systemctl enable docker
 sudo systemctl restart docker
 
-# Download and execute `bash.sh`
-cd /home/adminuser || cd /root
-curl -O https://raw.githubusercontent.com/CAA900NBB-ProjectX/deployment-scripts/main/bash.sh
-chmod +x bash.sh
-sudo -u adminuser ./bash.sh
+# Clone required repositories
+cd /home/adminuser
+mkdir -p deployment && cd deployment
 
+declare -A repos
+repos["loginservice_found_it_backend"]="https://github.com/CAA900NBB-ProjectX/loginservice_found_it_backend.git"
+repos["itemservice_found_it_backend"]="https://github.com/CAA900NBB-ProjectX/itemservice_found_it_backend.git"
+repos["api_gateway"]="https://github.com/CAA900NBB-ProjectX/api_gateway.git"
+repos["chatservice_lost_and_found_backend"]="https://github.com/CAA900NBB-ProjectX/chatservice_lost_and_found_backend.git"
+
+for dir in "${!repos[@]}"; do
+    if [ -d "$dir" ]; then
+        echo "Directory $dir exists. Pulling latest changes..."
+        cd "$dir"
+        git pull origin main || echo "Failed to pull latest changes"
+        cd ..
+    else
+        echo "Cloning ${repos[$dir]} into $dir..."
+        git clone "${repos[$dir]}"
+    fi
+done
+
+# Deploy environment files
+echo "Deploying environment files..."
+echo "DATABASE_URL=mysql://user:password@localhost:3306/db" > loginservice_found_it_backend/.env
+echo "DATABASE_URL=mysql://user:password@localhost:3306/db" > itemservice_found_it_backend/.env
+
+echo "Environment files deployed successfully."
+
+# Restart Docker to apply any changes
+sudo systemctl restart docker
 
 echo "Deployment script executed successfully."
