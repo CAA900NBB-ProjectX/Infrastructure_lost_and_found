@@ -156,47 +156,6 @@ resource "azurerm_linux_virtual_machine" "vm" {
   custom_data = base64encode(file("${path.root}/userdata.sh"))
 }
 
-# Upload `bash.sh` and environment files, then execute them
- resource "null_resource" "deploy" {
-   depends_on = [azurerm_linux_virtual_machine.vm]
- 
-   connection {
-     type        = "ssh"
-     user        = "azureuser"
-     private_key = file("~/.ssh/id_rsa")  # Replace with your SSH key file
-     host        = azurerm_public_ip.public_ip.ip_address
-   }
- 
-   # Upload bash.sh script
-   provisioner "file" {
-     source      = "bash.sh"
-     destination = "/home/azureuser/bash.sh"
-   }
- 
-   # Upload environment files
-   provisioner "file" {
-     source      = "loginservice.env"
-     destination = "/home/azureuser/loginservice.env"
-   }
- 
-   provisioner "file" {
-     source      = "itemservice.env"
-     destination = "/home/azureuser/itemservice.env"
-   }
- 
-   # Execute bash.sh to clone repositories & deploy environment files
-   provisioner "remote-exec" {
-     inline = [
-       "chmod +x /home/azureuser/bash.sh",
-       "/home/azureuser/bash.sh"
-     ]
-   }
- }
- 
- output "public_ip" {
-   value = azurerm_public_ip.public_ip.ip_address
- }
-
 # Azure Container Registry (ACR)
 resource "azurerm_container_registry" "acr" {
   name                = "founditacr"
