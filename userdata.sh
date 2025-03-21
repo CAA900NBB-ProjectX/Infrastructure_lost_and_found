@@ -54,6 +54,9 @@ docker-compose --version || echo "Docker Compose installation failed!"
 sudo systemctl enable docker
 sudo systemctl restart docker
 
+# Ensure Docker is running before proceeding
+sleep 10
+
 # Clone required repositories
 cd /home/adminuser
 mkdir -p deployment && cd deployment
@@ -83,7 +86,64 @@ echo "DATABASE_URL=mysql://user:password@localhost:3306/db" > itemservice_found_
 
 echo "Environment files deployed successfully."
 
-# Restart Docker to apply any changes
+# Fix Docker permissions immediately
+sudo usermod -aG docker adminuser
+newgrp docker || true
+
+# Build and run the Service Registry (Eureka)
+cd /home/adminuser/deployment/api_gateway/service-registry || exit 1
+echo "Building and running Service Registry (Eureka)..."
+
+# Ensure `mvnw` is executable
+chmod +x mvnw || true
+
+# Build the project if necessary (assuming it's a Spring Boot application)
+./mvnw clean package -DskipTests || exit 1
+
+# Wait for build to complete
+sleep 10
+
+# Verify JAR file exists before proceeding
+JAR_FILE=$(ls target/*.jar | head -n 1)
+if [[ -z "$JAR_FILE" ]]; then
+    echo "Error: JAR file not found in target/. Build failed."
+    exit 1
+fi
+
+# Create a Dockerfile for Eureka (if not already in repo)
+cat <<EOF > Dockerfile
+FROM openjdk:11-jre-slim
+WORKDIR /app
+COPY $JAR_FILE service-registry.jar
+EXPOSE 8761
+CMD ["java", "-jar", "service-registry.jar"]
+EOF
+
+# Build Docker image for Service Registry
+docker build -t service-registry .
+
+# Remove any existing container
+docker stop service-registry || true
+docker rm service-registry || true
+
+# Run Eureka Service Registry as a Docker container
+docker run -d --name service-registry -p 8761:8761 service-registry
+
+# Wait for the container to stabilize
+sleep 10
+
+# Check if container is running
+if ! docker ps | grep -q service-registry; then
+    echo "Error: Service Registry container failed to start."
+    exit 1
+fi
+
+echo "Service Registry (Eureka) is now running on port 8761"
+
+# Restart Docker to apply changes
 sudo systemctl restart docker
+
+# Ensure the Service Registry container starts on reboot
+echo "@reboot root docker start service-registry" | sudo tee -a /etc/crontab
 
 echo "Deployment script executed successfully."
