@@ -23,5 +23,11 @@ echo "All repositories have been cloned successfully."
 echo "Deploying environment files..."
 cp loginservice.env loginservice_found_it_backend/.env
 cp itemservice.env itemservice_found_it_backend/.env
+cp chatservice.env chatservice_lost_and_found_backend/.env
 
 echo "Environment files have been deployed successfully."
+
+cd api_gateway
+docker-compose up -d
+
+echo "Service Registry is now running on port 8761."

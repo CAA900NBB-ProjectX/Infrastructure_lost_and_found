@@ -162,7 +162,7 @@ resource "null_resource" "deploy" {
 
   connection {
     type        = "ssh"
-    user        = "azureuser"
+    user        = "adminuser"
     private_key = file("~/.ssh/id_rsa")  # Replace with your SSH key file
     host        = azurerm_public_ip.public_ip.ip_address
   }
@@ -170,25 +170,30 @@ resource "null_resource" "deploy" {
   # Upload bash.sh script
   provisioner "file" {
     source      = "bash.sh"
-    destination = "/home/azureuser/bash.sh"
+    destination = "/home/adminuser/bash.sh"
   }
 
   # Upload environment files
   provisioner "file" {
     source      = "loginservice.env"
-    destination = "/home/azureuser/loginservice.env"
+    destination = "/home/adminuser/loginservice.env"
   }
 
   provisioner "file" {
     source      = "itemservice.env"
-    destination = "/home/azureuser/itemservice.env"
+    destination = "/home/adminuser/itemservice.env"
+  }
+
+  provisioner "file" {
+    source      = "chatservice.env"
+    destination = "/home/adminuser/chatservice.env"
   }
 
   # Execute bash.sh to clone repositories & deploy environment files
   provisioner "remote-exec" {
     inline = [
-      "chmod +x /home/azureuser/bash.sh",
-      "/home/azureuser/bash.sh"
+      "chmod +x /home/adminuser/bash.sh",
+      "/home/adminuser/bash.sh"
     ]
   }
 }
