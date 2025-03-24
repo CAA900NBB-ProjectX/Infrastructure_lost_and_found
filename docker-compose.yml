@@ -1,0 +1,91 @@
+version: "3.8"
+
+services:
+
+  postgres:
+    container_name: postgresdb
+    image: postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data
+      POSTGRES_DB: userdb
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - foundit-network
+    restart: unless-stopped
+  
+  serviceregistry:
+    image: tharukadk/service-registry:01
+    container_name: servreg
+    ports:
+      - 8761:8761
+    networks:
+      - foundit-network
+
+  apigateway:
+    image: tharukadk/api-gateway:01
+    container_name: apigwy
+    ports:
+      - 8085:8085
+    environment:
+      server.port: 8085
+      eureka.client.serviceUrl.defaultZone: http://servreg:8761/eureka
+    networks:
+      - foundit-network
+
+  loginservice:
+    container_name: loginservice
+    image: tharukadk/login-service:01
+    env_file:
+      - .env
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresdb:5432/userdb
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - 8081:8081
+    depends_on:
+      - postgres
+    networks:
+      - foundit-network
+
+  itemservice:
+    container_name: itemservice
+    image: tharukadk/item-service:01
+    env_file:
+      - .env
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresdb:5432/itemdb
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - 8082:8082
+    networks:
+      - foundit-network
+
+  chatservice:
+    container_name: chatservice
+    image: tharukadk/chat-service:01
+    env_file:
+      - .env
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresdb:5432/chatdb
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - 8083:8083
+    networks:
+      - foundit-network
+
+networks:
+  foundit-network:
+    driver: bridge
+
+volumes:
+  postgres:
+    driver: local
