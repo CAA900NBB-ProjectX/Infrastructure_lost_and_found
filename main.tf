@@ -126,6 +126,43 @@ resource "azurerm_network_interface_security_group_association" "nsg_association
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
+data "azurerm_key_vault" "foundit" {
+  name                = "foundit-vault"
+  resource_group_name = "foundit"
+}
+
+data "azurerm_key_vault_secret" "eureka_service_container" {
+  name         = "eurekaservicecontainer"
+  key_vault_id = data.azurerm_key_vault.foundit.id
+}
+
+data "azurerm_key_vault_secret" "jwt_secret_key" {
+  name         = "jwtsecretkey"
+  key_vault_id = data.azurerm_key_vault.foundit.id
+  
+}
+
+data "azurerm_key_vault_secret" "postgres_user" {
+  name         = "postgresuser"
+  key_vault_id = data.azurerm_key_vault.foundit.id
+}
+
+data "azurerm_key_vault_secret" "postgres_password" {
+  name         = "postgrespassword"
+  key_vault_id = data.azurerm_key_vault.foundit.id
+}
+
+data "azurerm_key_vault_secret" "app_password" {
+  name         = "apppassword"
+  key_vault_id = data.azurerm_key_vault.foundit.id
+}
+
+data "azurerm_key_vault_secret" "support_email" {
+  name         = "supportemail"
+  key_vault_id = data.azurerm_key_vault.foundit.id
+}
+
+
 # Virtual Machine
 resource "azurerm_linux_virtual_machine" "vm" { 
   name                  = "FoundIt-vm"
@@ -153,14 +190,31 @@ resource "azurerm_linux_virtual_machine" "vm" {
   }
 
   # Pass the User Data script to the VM
-  custom_data = base64encode(file("${path.root}/userdata.sh"))
+   custom_data = base64encode(file("${path.root}/userdata.sh"))
+
+  connection {
+    type        = "ssh"
+    user        = "adminuser"
+    private_key = file("~/.ssh/id_rsa")
+    host        = azurerm_public_ip.public_ip.ip_address
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/.env"
+    destination = "/home/adminuser/.env"
+  }
+
 }
 
-# Azure Container Registry (ACR)
-resource "azurerm_container_registry" "acr" {
-  name                = "founditacr"
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
-  sku                 = "Basic"
-    admin_enabled       = true
+resource "local_file" "env_file" {
+  content = templatefile("${path.module}/.env.tpl", {
+    jwt_secret_key    = data.azurerm_key_vault_secret.jwt_secret_key.value
+    postgres_user     = data.azurerm_key_vault_secret.postgres_user.value
+    postgres_password = data.azurerm_key_vault_secret.postgres_password.value
+    app_password      = data.azurerm_key_vault_secret.app_password.value
+    support_email     = data.azurerm_key_vault_secret.support_email.value
+    eureka_container  = data.azurerm_key_vault_secret.eureka_service_container.value
+  })
+
+  filename = "${path.module}/.env"
 }
