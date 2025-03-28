@@ -173,8 +173,8 @@ resource "azurerm_linux_virtual_machine" "vm" {
   network_interface_ids = [azurerm_network_interface.vm_nic.id]
 
   admin_ssh_key {
-    username   = "adminuser"
-    public_key = file("~/.ssh/id_rsa.pub")
+     username   = "adminuser"
+     public_key = file("~/.ssh/id_rsa.pub")
   }
 
 
@@ -208,18 +208,18 @@ EOT
 }
 
 # Copy the updated .env file to the VM
-resource "null_resource" "copy_env_file" {
-  depends_on = [azurerm_linux_virtual_machine.vm]
+# resource "null_resource" "copy_env_file" {
+#   depends_on = [azurerm_linux_virtual_machine.vm]
 
-  provisioner "file" {
-    content     = local.env_content
-    destination = "/home/adminuser/.env"
+#   provisioner "file" {
+#     content     = local.env_content
+#     destination = "/home/adminuser/.env"
 
-    connection {
-      type        = "ssh"
-      user        = "adminuser"
-      private_key = file("~/.ssh/id_rsa")
-      host        = azurerm_linux_virtual_machine.vm.public_ip_address
-    }
-  }
-}
+#     connection {
+#       type        = "ssh"
+#       user        = "adminuser"
+#       private_key = file("~/.ssh/id_rsa")
+#       host        = azurerm_linux_virtual_machine.vm.public_ip_address
+#     }
+#   }
+# }
