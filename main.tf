@@ -127,7 +127,7 @@ resource "azurerm_network_interface_security_group_association" "nsg_association
 }
 
 data "azurerm_key_vault" "foundit" {
-  name                = "foundit-vault1"
+  name                = "foundit-vault"
   resource_group_name = "foundit"
 }
 
