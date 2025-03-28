@@ -127,7 +127,7 @@ resource "azurerm_network_interface_security_group_association" "nsg_association
 }
 
 data "azurerm_key_vault" "foundit" {
-  name                = "foundit-vault"
+  name                = "foundit-vault1"
   resource_group_name = "foundit"
 }
 
@@ -174,7 +174,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   admin_ssh_key {
     username   = "adminuser"
-    public_key = file("~/.ssh/id_rsa.pub")
+    public_key = file("id_rsa.pub")
   }
 
 
@@ -218,7 +218,7 @@ resource "null_resource" "copy_env_file" {
     connection {
       type        = "ssh"
       user        = "adminuser"
-      private_key = file("~/.ssh/id_rsa")
+      private_key = file("id_rsa")
       host        = azurerm_linux_virtual_machine.vm.public_ip_address
     }
   }
