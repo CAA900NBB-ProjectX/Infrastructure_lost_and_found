@@ -23,15 +23,15 @@ echo "Docker version: $(docker --version)"
 echo "Docker-Compose version: $(docker-compose --version)"
 
 # Create directory to store infrastructure files
-mkdir -p /home/adminuser/deployment
+mkdir -p /home/adminuser
 
 # Download docker-compose.yml and init.sql from Infrastructure_lost_and_found repo
-curl -o /home/adminuser/deployment/docker-compose.yml https://raw.githubusercontent.com/CAA900NBB-ProjectX/Infrastructure_lost_and_found/main/docker-compose.yml
+curl -o /home/adminuser/docker-compose.yml https://raw.githubusercontent.com/CAA900NBB-ProjectX/Infrastructure_lost_and_found/main/docker-compose.yml
 
-curl -o /home/adminuser/deployment/init.sql https://raw.githubusercontent.com/CAA900NBB-ProjectX/Infrastructure_lost_and_found/main/init.sql
+curl -o /home/adminuser/init.sql https://raw.githubusercontent.com/CAA900NBB-ProjectX/Infrastructure_lost_and_found/main/init.sql
 
 # Set ownership
-sudo chown -R adminuser:adminuser /home/adminuser/deployment
+sudo chown -R adminuser:adminuser /home/adminuser
 
 
 # # Clone required repositories
@@ -57,17 +57,6 @@ sudo chown -R adminuser:adminuser /home/adminuser/deployment
 # cd ../loginservice_found_it_backend
 
 # # Create the .env file for loginservice
-# cat <<EOF > .env
-# EUREKA_SERVICE_CONTAINER=http://servreg:8761/eureka
-
-# JWT_SECRET_KEY=f943ea3da5fcd77a7b78f184eaeac29d13fc20ef350edbbdb2e4c014172ee2c7e4bee4228047786ab3409b273eb048722e9227c774dd4f8fbd96ab7b438b9799
-
-# SUPPORT_EMAIL=tharuka020395@gmail.com
-# APP_PASSWORD=xcqv emma lorr lvhq
-
-# POSTGRES_USER=postgres
-# POSTGRES_PASSWORD=1250.com
-# EOF
 
 # docker-compose -p app up -d
 
