@@ -177,6 +177,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
     public_key = file("~/.ssh/id_rsa.pub")
   }
 
+
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
@@ -192,29 +193,33 @@ resource "azurerm_linux_virtual_machine" "vm" {
   # Pass the User Data script to the VM
    custom_data = base64encode(file("${path.root}/userdata.sh"))
 
-  connection {
-    type        = "ssh"
-    user        = "adminuser"
-    private_key = file("~/.ssh/id_rsa")
-    host        = azurerm_public_ip.public_ip.ip_address
-  }
-
-  provisioner "file" {
-    source      = "${path.module}/.env"
-    destination = "/home/adminuser/.env"
-  }
-
 }
 
-resource "local_file" "env_file" {
-  content = templatefile("${path.module}/.env.tpl", {
-    jwt_secret_key    = data.azurerm_key_vault_secret.jwt_secret_key.value
-    postgres_user     = data.azurerm_key_vault_secret.postgres_user.value
-    postgres_password = data.azurerm_key_vault_secret.postgres_password.value
-    app_password      = data.azurerm_key_vault_secret.app_password.value
-    support_email     = data.azurerm_key_vault_secret.support_email.value
-    eureka_container  = data.azurerm_key_vault_secret.eureka_service_container.value
-  })
+# Create the .env file content using Key Vault secrets
+locals {
+  env_content = <<EOT
+EUREKA_SERVICE_CONTAINER=${data.azurerm_key_vault_secret.eureka_service_container.value}
+JWT_SECRET_KEY=${data.azurerm_key_vault_secret.jwt_secret_key.value}
+SUPPORT_EMAIL=${data.azurerm_key_vault_secret.support_email.value}
+APP_PASSWORD=${data.azurerm_key_vault_secret.app_password.value}
+POSTGRES_USER=${data.azurerm_key_vault_secret.postgres_user.value}
+POSTGRES_PASSWORD=${data.azurerm_key_vault_secret.postgres_password.value}
+EOT
+}
 
-  filename = "${path.module}/.env"
+# Copy the updated .env file to the VM
+resource "null_resource" "copy_env_file" {
+  depends_on = [azurerm_linux_virtual_machine.vm]
+
+  provisioner "file" {
+    content     = local.env_content
+    destination = "/home/adminuser/.env"
+
+    connection {
+      type        = "ssh"
+      user        = "adminuser"
+      private_key = file("~/.ssh/id_rsa")
+      host        = azurerm_linux_virtual_machine.vm.public_ip_address
+    }
+  }
 }
