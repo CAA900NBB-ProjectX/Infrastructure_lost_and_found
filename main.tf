@@ -211,6 +211,10 @@ EOT
 resource "null_resource" "copy_env_file" {
   depends_on = [azurerm_linux_virtual_machine.vm]
 
+   triggers = {
+    always_run = timestamp()  # Forces it to run every time
+  }
+
   provisioner "file" {
     content     = local.env_content
     destination = "/home/adminuser/.env"

@@ -3,6 +3,9 @@
 set -e  # Stop script if any command fails
 set -x  # Debug mode to print commands as they run
 
+# Add this line temporarily for debugging:
+set +e
+
 echo "Starting setup script..."
 
 # Update system and install required packages
@@ -41,40 +44,97 @@ docker-compose --version || { echo "Docker Compose installation failed!"; exit 1
 echo "Waiting for Docker to fully start..."
 sleep 10  # Ensures Docker daemon is ready
 
-# Create directory to store infrastructure files
-INFRA_DIR="/home/adminuser"
-echo "Creating infrastructure directory at $INFRA_DIR..."
-mkdir -p $INFRA_DIR
+# # Create directory to store infrastructure files
+# INFRA_DIR="/home/adminuser"
+# echo "Creating infrastructure directory at $INFRA_DIR..."
+# mkdir -p $INFRA_DIR
 
-# Download docker-compose.yml and init.sql from the repository
-echo "Downloading infrastructure files..."
+# # Download docker-compose.yml and init.sql from the repository
+# echo "Downloading infrastructure files..."
+# curl -o "$INFRA_DIR/docker-compose.yml" https://raw.githubusercontent.com/CAA900NBB-ProjectX/Infrastructure_lost_and_found/main/docker-compose.yml
+# curl -o "$INFRA_DIR/init.sql" https://raw.githubusercontent.com/CAA900NBB-ProjectX/Infrastructure_lost_and_found/main/init.sql
+
+# # Verify downloads
+# if [[ ! -f "$INFRA_DIR/docker-compose.yml" ]]; then
+#     echo "Error: docker-compose.yml not found!"
+#     exit 1
+# fi
+
+# if [[ ! -f "$INFRA_DIR/init.sql" ]]; then
+#     echo "Error: init.sql not found!"
+#     exit 1
+# fi
+
+# # Ensure adminuser has correct permissions
+# echo "Setting correct permissions..."
+# sudo chown -R adminuser:adminuser "$INFRA_DIR"
+# sudo chmod -R 755 "$INFRA_DIR"
+
+# # Run Docker Compose (explicitly as adminuser)
+# echo "Starting Docker containers..."
+# sudo docker-compose -f /home/adminuser/docker-compose.yml --env-file /home/adminuser/.env -p app up -d
+# sudo docker ps -a
+
+# # Check if containers are running
+# echo "Checking running containers..."
+# sudo docker ps -aterra
+
+# echo "Setup complete!"
+
+
+# Prepare working directory
+INFRA_DIR="/home/adminuser"
+mkdir -p "$INFRA_DIR"
+
+# Download files
 curl -o "$INFRA_DIR/docker-compose.yml" https://raw.githubusercontent.com/CAA900NBB-ProjectX/Infrastructure_lost_and_found/main/docker-compose.yml
 curl -o "$INFRA_DIR/init.sql" https://raw.githubusercontent.com/CAA900NBB-ProjectX/Infrastructure_lost_and_found/main/init.sql
 
-# Verify downloads
-if [[ ! -f "$INFRA_DIR/docker-compose.yml" ]]; then
-    echo "Error: docker-compose.yml not found!"
-    exit 1
+# Make sure files are present
+if [[ ! -f "$INFRA_DIR/docker-compose.yml" || ! -f "$INFRA_DIR/init.sql" ]]; then
+  echo "Missing docker-compose or init.sql"
+  exit 1
 fi
 
-if [[ ! -f "$INFRA_DIR/init.sql" ]]; then
-    echo "Error: init.sql not found!"
-    exit 1
-fi
-
-# Ensure adminuser has correct permissions
-echo "Setting correct permissions..."
+# Ensure correct permissions
 sudo chown -R adminuser:adminuser "$INFRA_DIR"
 sudo chmod -R 755 "$INFRA_DIR"
 
-# Run Docker Compose (explicitly as adminuser)
-echo "Starting Docker containers..."
-sudo -u adminuser bash -c "cd $INFRA_DIR && docker-compose -p app up -d"
+# Wait for Docker to be fully ready
+sleep 10
 
-# Check if containers are running
-echo "Checking running containers..."
+# Wait for .env file to exist (from Terraform null_resource)
+echo "Waiting for .env to be created by Terraform..."
+for i in {1..10}; do
+  if [[ -f "$INFRA_DIR/.env" ]]; then
+    echo ".env file found."
+    break
+  fi
+  echo "Waiting for .env... ($i/10)"
+  sleep 5
+done
+
+# Final check
+if [[ ! -f "$INFRA_DIR/.env" ]]; then
+  echo "ERROR: .env file not found after waiting. Aborting Docker Compose."
+  exit 1
+fi
+
+echo "Cleaning up old containers (if any)..."
+sudo docker rm -f postgresdb servreg apigwy loginservice itemservice chatservice || true
+
+echo "Restarting Docker to ensure it's clean..."
+sudo systemctl restart docker
+sleep 10
+
+# Start containers with Docker Compose using sudo (bypass permission issue)
+sudo bash -c "cd $INFRA_DIR && docker-compose --env-file .env -p app up -d"
+
+# Add logging to see what's going wrong
+echo "Checking logs from Docker Compose..."
+sudo docker-compose -f "$INFRA_DIR/docker-compose.yml" --env-file "$INFRA_DIR/.env" logs > "$INFRA_DIR/compose.log" 2>&1
+
+# Show running containers
 sudo docker ps -a
-
-sudo rm .env
 
 echo "Setup complete!"
